@@ -11,7 +11,9 @@ interface CdkStackProps extends Cdk.StackProps {
 }
 
 export class CdkStack extends Cdk.Stack {
-  private props: CdkStackProps;
+  private readonly props: CdkStackProps;
+  private readonly sourceOutput = new CodePipeline.Artifact();
+  private readonly cdkOutput = new CodePipeline.Artifact();
 
   constructor(scope: Cdk.Construct, id: string, props: CdkStackProps) {
     super(scope, id, props);
@@ -26,12 +28,36 @@ export class CdkStack extends Cdk.Stack {
       ],
     });
 
-    new CodePipeline.Pipeline(this, 'PersonalSitePipeline', {
+    const pipeline = new CodePipeline.Pipeline(this, 'PersonalSitePipeline', {
       artifactBucket: artifactBucket,
       restartExecutionOnUpdate: true,
-      stages: this.renderPipelineStages(),
     });
+    pipeline.addStage(this.renderSourceStage());
+    pipeline.addStage(this.renderBuildStage());
+    pipeline.addStage(this.renderSelfMutateStage());
   }
+
+  private renderSourceStage = (): CodePipeline.StageProps => {
+    const sourceAuthN = SecretsManager.Secret.fromSecretArn(
+      this,
+      'GithubSecret',
+      this.props.secretArn
+    ).secretValueFromJson('OAuth');
+
+    return {
+      stageName: 'Repository',
+      actions: [
+        new CodePipelineActions.GitHubSourceAction({
+          actionName: 'RepositorySource',
+          oauthToken: sourceAuthN,
+          output: this.sourceOutput,
+          owner: 'eddiecho',
+          repo: 'personalblog',
+          branch: 'mainline',
+        }),
+      ],
+    };
+  };
 
   private renderCompileCdkProject = (): CodeBuild.PipelineProject => {
     const project = new CodeBuild.PipelineProject(this, 'CompileCdkProject', {
@@ -69,52 +95,41 @@ export class CdkStack extends Cdk.Stack {
     return project;
   };
 
-  private renderPipelineStages = (): CodePipeline.StageProps[] => {
-    const sourceOutput = new CodePipeline.Artifact();
-    const sourceAuthN = SecretsManager.Secret.fromSecretArn(
-      this,
-      'GithubSecret',
-      this.props.secretArn
-    ).secretValueFromJson('OAuth');
+  private renderBuildStage = (): CodePipeline.StageProps => {
+    return {
+      stageName: 'Build',
+      actions: [
+        new CodePipelineActions.CodeBuildAction({
+          actionName: 'CompileCDK',
+          input: this.sourceOutput,
+          outputs: [this.cdkOutput],
+          project: this.renderCompileCdkProject(),
+        }),
+      ],
+    };
+  };
 
-    const cdkOutput = new CodePipeline.Artifact();
+  private renderSelfMutateStage = (): CodePipeline.StageProps => {
+    const cdkChangeSetName = 'CdkChangeSet';
 
-    return [
-      {
-        stageName: 'Repository',
-        actions: [
-          new CodePipelineActions.GitHubSourceAction({
-            actionName: 'RepositorySource',
-            oauthToken: sourceAuthN,
-            output: sourceOutput,
-            owner: 'eddiecho',
-            repo: 'personalblog',
-            branch: 'mainline',
-          }),
-        ],
-      },
-      {
-        stageName: 'Build',
-        actions: [
-          new CodePipelineActions.CodeBuildAction({
-            actionName: 'CompileCDK',
-            input: sourceOutput,
-            outputs: [cdkOutput],
-            project: this.renderCompileCdkProject(),
-          }),
-        ],
-      },
-      {
-        stageName: 'SelfMutate',
-        actions: [
-          new CodePipelineActions.CloudFormationCreateUpdateStackAction({
-            actionName: 'SelfMutate',
-            adminPermissions: true,
-            stackName: this.stackName,
-            templatePath: cdkOutput.atPath(`cdk.out/${this.stackName}.template.json`),
-          }),
-        ],
-      },
-    ];
+    return {
+      stageName: 'SelfMutate',
+      actions: [
+        new CodePipelineActions.CloudFormationCreateReplaceChangeSetAction({
+          actionName: 'PrepareChangeSet',
+          stackName: this.stackName,
+          changeSetName: cdkChangeSetName,
+          adminPermissions: true,
+          templatePath: this.cdkOutput.atPath(`cdk.out/${this.stackName}.template.json`),
+          runOrder: 1,
+        }),
+        new CodePipelineActions.CloudFormationExecuteChangeSetAction({
+          actionName: 'ExecuteChangeSet',
+          stackName: this.stackName,
+          changeSetName: cdkChangeSetName,
+          runOrder: 2,
+        }),
+      ],
+    };
   };
 }
