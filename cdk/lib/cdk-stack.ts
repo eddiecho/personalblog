@@ -35,7 +35,7 @@ export class CdkStack extends Cdk.Stack {
             commands: ['chmod +x cdk/bin/*'],
           },
           build: {
-            commands: ['./cdk/bin/compile_cdk.sh'],
+            commands: ['./cdk/bin/build_cdk.sh'],
           },
         },
         artifacts: {
