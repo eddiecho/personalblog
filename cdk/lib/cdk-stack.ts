@@ -17,7 +17,14 @@ export class CdkStack extends Cdk.Stack {
     super(scope, id, props);
     this.props = props;
 
-    const artifactBucket = new S3.Bucket(this, 'PersonalSitePipelineArtifactBucket');
+    const artifactBucket = new S3.Bucket(this, 'PersonalSitePipelineArtifactBucket', {
+      lifecycleRules: [
+        {
+          enabled: true,
+          expiration: Cdk.Duration.days(7),
+        },
+      ],
+    });
 
     new CodePipeline.Pipeline(this, 'PersonalSitePipeline', {
       artifactBucket: artifactBucket,
@@ -94,6 +101,17 @@ export class CdkStack extends Cdk.Stack {
             input: sourceOutput,
             outputs: [cdkOutput],
             project: this.renderCompileCdkProject(),
+          }),
+        ],
+      },
+      {
+        stageName: 'SelfMutate',
+        actions: [
+          new CodePipelineActions.CloudFormationCreateUpdateStackAction({
+            actionName: 'SelfMutate',
+            adminPermissions: true,
+            stackName: this.stackName,
+            templatePath: cdkOutput.atPath(`cdk.out/${this.stackName}.template.json`),
           }),
         ],
       },
