@@ -7,6 +7,7 @@ import * as SecretsManager from '@aws-cdk/aws-secretsmanager';
 import * as Cdk from '@aws-cdk/core';
 
 interface CdkStackProps extends Cdk.StackProps {
+  frontendStackName: string;
   secretArn: string;
 }
 
@@ -35,6 +36,7 @@ export class CdkStack extends Cdk.Stack {
     pipeline.addStage(this.renderSourceStage());
     pipeline.addStage(this.renderBuildStage());
     pipeline.addStage(this.renderSelfMutateStage());
+    pipeline.addStage(this.renderFrontendDeployStage());
   }
 
   private renderSourceStage = (): CodePipeline.StageProps => {
@@ -127,6 +129,31 @@ export class CdkStack extends Cdk.Stack {
           actionName: 'ExecuteChangeSet',
           stackName: this.stackName,
           changeSetName: cdkChangeSetName,
+          runOrder: 2,
+        }),
+      ],
+    };
+  };
+
+  private renderFrontendDeployStage = (): CodePipeline.StageProps => {
+    const frontendChangeSetName = 'FrontendChangeSet';
+    const { frontendStackName } = this.props;
+
+    return {
+      stageName: 'FrontendDeploy',
+      actions: [
+        new CodePipelineActions.CloudFormationCreateReplaceChangeSetAction({
+          actionName: 'PrepareChangeSet',
+          stackName: frontendStackName,
+          changeSetName: frontendChangeSetName,
+          adminPermissions: true,
+          templatePath: this.cdkOutput.atPath(`cdk.out/${frontendStackName}.template.json`),
+          runOrder: 1,
+        }),
+        new CodePipelineActions.CloudFormationExecuteChangeSetAction({
+          actionName: 'ExecuteChangeSet',
+          stackName: frontendStackName,
+          changeSetName: frontendChangeSetName,
           runOrder: 2,
         }),
       ],

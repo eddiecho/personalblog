@@ -28,13 +28,14 @@ async function describeSecret(secretId: string): Promise<SecretsManager.Describe
   const githubSecret = await describeSecret('GithubPersonalAccessToken');
 
   const app = new cdk.App();
-  new FrontendStack(app, 'PersonalSiteFrontend', {
+  const frontend = new FrontendStack(app, 'PersonalSiteFrontend', {
     hostedZoneId: hostedZone.Id,
     hostedZoneName: hostedZone.Name,
     domainName: domainName,
   });
 
   new CdkStack(app, 'PersonalSiteCicd', {
+    frontendStackName: frontend.stackName,
     secretArn: githubSecret.ARN as string,
   });
 })();
