@@ -34,7 +34,7 @@ async function describeSecret(secretId: string): Promise<SecretsManager.Describe
     domainName: domainName,
   });
 
-  new CdkStack(app, 'PersonalStackCicd', {
+  new CdkStack(app, 'PersonalSiteCicd', {
     secretArn: githubSecret.ARN as string,
   });
 })();
