@@ -23,6 +23,7 @@ export const renderCodeBuildDockerImage = (scope: Cdk.Construct, props: CodeBuil
     },
     environment: {
       buildImage: CodeBuild.LinuxBuildImage.STANDARD_4_0,
+      privileged: true,
     },
     buildSpec: CodeBuild.BuildSpec.fromObject({
       version: '0.2',
