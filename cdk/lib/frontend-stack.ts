@@ -12,6 +12,8 @@ interface FrontendStackProps extends Cdk.StackProps {
 }
 
 export class FrontendStack extends Cdk.Stack {
+  public readonly assetsBucket: S3.IBucket;
+
   constructor(app: Cdk.App, name: string, props: FrontendStackProps) {
     super(app, name, props);
 
@@ -21,10 +23,10 @@ export class FrontendStack extends Cdk.Stack {
     });
 
     const originAccessIdentity = new Cloudfront.OriginAccessIdentity(this, 'SiteOAI');
-    const assetsBucket = new S3.Bucket(this, 'AssetsBucket', {
+    this.assetsBucket = new S3.Bucket(this, 'AssetsBucket', {
       websiteIndexDocument: 'index.html',
     });
-    assetsBucket.grantRead(originAccessIdentity);
+    this.assetsBucket.grantRead(originAccessIdentity);
 
     const cert = new Acm.Certificate(this, 'SiteCert', {
       domainName: `*.${props.domainName}`,
@@ -36,7 +38,7 @@ export class FrontendStack extends Cdk.Stack {
       originConfigs: [
         {
           s3OriginSource: {
-            s3BucketSource: assetsBucket,
+            s3BucketSource: this.assetsBucket,
             originAccessIdentity: originAccessIdentity,
           },
           behaviors: [

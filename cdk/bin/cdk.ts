@@ -5,6 +5,7 @@ import * as Route53 from 'aws-sdk/clients/route53';
 import * as SecretsManager from 'aws-sdk/clients/secretsmanager';
 
 import { FrontendStack } from '../lib/frontend-stack';
+import { FrontendBuildStack } from '../lib/frontend-build-stack';
 import { CdkStack } from '../lib/cdk-stack';
 
 async function listHostedZones(): Promise<Route53.ListHostedZonesResponse> {
@@ -34,8 +35,13 @@ async function describeSecret(secretId: string): Promise<SecretsManager.Describe
     domainName: domainName,
   });
 
+  const frontendBuild = new FrontendBuildStack(app, 'PersonalSiteRender', {
+    personalSiteBucket: frontend.assetsBucket,
+  });
+
   new CdkStack(app, 'PersonalSiteCicd', {
     frontendStackName: frontend.stackName,
     secretArn: githubSecret.ARN as string,
+    renderBlogImageRepo: frontendBuild.containerRepo.repositoryName,
   });
 })();

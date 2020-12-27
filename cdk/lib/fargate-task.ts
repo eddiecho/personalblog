@@ -16,9 +16,9 @@ export class FargateTask extends Cdk.Construct {
   constructor(scope: Cdk.Construct, id: string, props: FargateTaskProps) {
     super(scope, id);
 
-    this.containerRepo = new Ecr.Repository(this, `${id}Repo`);
+    this.containerRepo = new Ecr.Repository(scope, `${id}Repo`);
 
-    const taskRole = new Iam.Role(this, `${id}TaskRole`, {
+    const taskRole = new Iam.Role(scope, `${id}TaskRole`, {
       assumedBy: new Iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       inlinePolicies: {
         executionPolicy: new Iam.PolicyDocument({
@@ -27,15 +27,14 @@ export class FargateTask extends Cdk.Construct {
       },
     });
 
-    const taskDefinition = new Ecs.FargateTaskDefinition(this, `${id}TaskDef`, {
+    this.taskDefinition = new Ecs.FargateTaskDefinition(scope, `${id}TaskDef`, {
       taskRole,
     });
-
-    taskDefinition.addContainer(this.taskContainerName, {
+    this.taskDefinition.addContainer(this.taskContainerName, {
       image: Ecs.ContainerImage.fromEcrRepository(this.containerRepo, 'latest'),
     });
 
-    this.cluster = new Ecs.Cluster(this, 'Cluster', {
+    this.cluster = new Ecs.Cluster(scope, 'Cluster', {
       clusterName: `${id}BuildCluster`,
       containerInsights: true,
     });
