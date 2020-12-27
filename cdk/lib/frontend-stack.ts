@@ -41,6 +41,7 @@ export class FrontendStack extends Cdk.Stack {
           },
           behaviors: [
             {
+              compress: true,
               isDefaultBehavior: true,
               defaultTtl: Cdk.Duration.minutes(10),
             },

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "release": "next build && next export && aws s3 sync out/ $OUTPUT_BUCKET",
     "start": "next start"
   },
   "dependencies": {

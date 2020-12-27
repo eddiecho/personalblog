@@ -6,9 +6,12 @@ import * as S3 from '@aws-cdk/aws-s3';
 import * as SecretsManager from '@aws-cdk/aws-secretsmanager';
 import * as Cdk from '@aws-cdk/core';
 
+import { renderCodeBuildDockerImage } from './codebuild-docker-image';
+
 interface CdkStackProps extends Cdk.StackProps {
   frontendStackName: string;
   secretArn: string;
+  renderBlogImageRepo: string;
 }
 
 export class CdkStack extends Cdk.Stack {
@@ -29,14 +32,17 @@ export class CdkStack extends Cdk.Stack {
       ],
     });
 
-    const pipeline = new CodePipeline.Pipeline(this, 'PersonalSitePipeline', {
+    new CodePipeline.Pipeline(this, 'PersonalSitePipeline', {
       artifactBucket: artifactBucket,
       restartExecutionOnUpdate: true,
+      stages: [
+        this.renderSourceStage(),
+        this.renderBuildStage(),
+        this.renderSelfMutateStage(),
+        this.renderFrontendDeployStage(),
+        this.renderBlogDockerStage(),
+      ],
     });
-    pipeline.addStage(this.renderSourceStage());
-    pipeline.addStage(this.renderBuildStage());
-    pipeline.addStage(this.renderSelfMutateStage());
-    pipeline.addStage(this.renderFrontendDeployStage());
   }
 
   private renderSourceStage = (): CodePipeline.StageProps => {
@@ -111,50 +117,51 @@ export class CdkStack extends Cdk.Stack {
     };
   };
 
-  private renderSelfMutateStage = (): CodePipeline.StageProps => {
-    const cdkChangeSetName = 'CdkChangeSet';
+  private getCloudformationStage = (stackName: string, stageName: string): CodePipeline.StageProps => {
+    const changeSetName = `${stackName}ChangeSet`;
 
     return {
-      stageName: 'SelfMutate',
+      stageName,
       actions: [
         new CodePipelineActions.CloudFormationCreateReplaceChangeSetAction({
+          changeSetName,
+          stackName,
           actionName: 'PrepareChangeSet',
-          stackName: this.stackName,
-          changeSetName: cdkChangeSetName,
           adminPermissions: true,
-          templatePath: this.cdkOutput.atPath(`cdk.out/${this.stackName}.template.json`),
           runOrder: 1,
+          templatePath: this.cdkOutput.atPath(`cdk.out/${stackName}.template.json`),
         }),
         new CodePipelineActions.CloudFormationExecuteChangeSetAction({
+          changeSetName,
+          stackName,
           actionName: 'ExecuteChangeSet',
-          stackName: this.stackName,
-          changeSetName: cdkChangeSetName,
           runOrder: 2,
         }),
       ],
     };
   };
 
-  private renderFrontendDeployStage = (): CodePipeline.StageProps => {
-    const frontendChangeSetName = 'FrontendChangeSet';
-    const { frontendStackName } = this.props;
+  private renderSelfMutateStage = (): CodePipeline.StageProps => {
+    return this.getCloudformationStage(this.stackName, 'SelfMutate');
+  };
 
+  private renderFrontendDeployStage = (): CodePipeline.StageProps => {
+    return this.getCloudformationStage(this.props.frontendStackName, 'FrontendDeploy');
+  };
+
+  private renderBlogDockerStage = (): CodePipeline.StageProps => {
     return {
-      stageName: 'FrontendDeploy',
+      stageName: 'RenderBlogImage',
       actions: [
-        new CodePipelineActions.CloudFormationCreateReplaceChangeSetAction({
-          actionName: 'PrepareChangeSet',
-          stackName: frontendStackName,
-          changeSetName: frontendChangeSetName,
-          adminPermissions: true,
-          templatePath: this.cdkOutput.atPath(`cdk.out/${frontendStackName}.template.json`),
-          runOrder: 1,
-        }),
-        new CodePipelineActions.CloudFormationExecuteChangeSetAction({
-          actionName: 'ExecuteChangeSet',
-          stackName: frontendStackName,
-          changeSetName: frontendChangeSetName,
-          runOrder: 2,
+        new CodePipelineActions.CodeBuildAction({
+          actionName: 'BuildAndUploadImage',
+          input: this.sourceOutput,
+          project: renderCodeBuildDockerImage(this, {
+            accountId: this.account,
+            region: this.region,
+            imageRepo: this.props.renderBlogImageRepo,
+            imageTag: 'latest',
+          }),
         }),
       ],
     };
