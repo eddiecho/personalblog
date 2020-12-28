@@ -31,13 +31,12 @@ export const renderCodeBuildDockerImage = (scope: Cdk.Construct, props: CodeBuil
       phases: {
         pre_build: {
           commands: [
-            `ls`,
             `cd ${props.baseDir}`,
             `aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${ecrRepo}`,
           ],
         },
         build: {
-          commands: [`docker build -t ${imageTag} blog/`, `docker tag ${imageTag} ${ecrRepo}/${imageTag}`],
+          commands: [`docker build -t ${imageTag} .`, `docker tag ${imageTag} ${ecrRepo}/${imageTag}`],
         },
         post_build: {
           commands: [`docker push ${ecrRepo}/${imageTag}`],
