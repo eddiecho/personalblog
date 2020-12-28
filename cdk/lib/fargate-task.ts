@@ -1,3 +1,4 @@
+import * as Ec2 from '@aws-cdk/aws-ec2';
 import * as Ecr from '@aws-cdk/aws-ecr';
 import * as Ecs from '@aws-cdk/aws-ecs';
 import * as Iam from '@aws-cdk/aws-iam';
@@ -26,6 +27,15 @@ export class FargateTask extends Cdk.Construct {
         }),
       },
     });
+
+    /*
+    const vpc = new Ec2.Vpc(this, 'Vpc', {
+      maxAzs: 2,
+      enableDnsHostnames: false,
+      enableDnsSupport: false,
+      natGateways: 0,
+    });
+    */
 
     this.taskDefinition = new Ecs.FargateTaskDefinition(scope, `${id}TaskDef`, {
       taskRole,

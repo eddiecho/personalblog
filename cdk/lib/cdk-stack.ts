@@ -6,12 +6,12 @@ import * as S3 from '@aws-cdk/aws-s3';
 import * as SecretsManager from '@aws-cdk/aws-secretsmanager';
 import * as Cdk from '@aws-cdk/core';
 
-import { renderCodeBuildDockerImage } from './codebuild-docker-image';
+// import { renderCodeBuildDockerImage } from './codebuild-docker-image';
 
 interface CdkStackProps extends Cdk.StackProps {
   frontendStackName: string;
   secretArn: string;
-  renderBlogImageRepo: string;
+  //  renderBlogImageRepo: string;
 }
 
 export class CdkStack extends Cdk.Stack {
@@ -40,7 +40,7 @@ export class CdkStack extends Cdk.Stack {
         this.renderBuildStage(),
         this.renderSelfMutateStage(),
         this.renderFrontendDeployStage(),
-        this.renderBlogDockerStage(),
+        // this.renderBlogDockerStage(),
       ],
     });
   }
@@ -149,6 +149,7 @@ export class CdkStack extends Cdk.Stack {
     return this.getCloudformationStage(this.props.frontendStackName, 'FrontendDeploy');
   };
 
+  /*
   private renderBlogDockerStage = (): CodePipeline.StageProps => {
     return {
       stageName: 'RenderBlogImage',
@@ -167,4 +168,5 @@ export class CdkStack extends Cdk.Stack {
       ],
     };
   };
+  */
 }

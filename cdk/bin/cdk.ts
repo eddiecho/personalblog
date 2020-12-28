@@ -42,6 +42,6 @@ async function describeSecret(secretId: string): Promise<SecretsManager.Describe
   new CdkStack(app, 'PersonalSiteCicd', {
     frontendStackName: frontend.stackName,
     secretArn: githubSecret.ARN as string,
-    renderBlogImageRepo: frontendBuild.containerRepo.repositoryName,
+//    renderBlogImageRepo: frontendBuild.containerRepo.repositoryName,
   });
 })();
