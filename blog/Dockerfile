@@ -1,9 +1,14 @@
-FROM public.ecr.aws/bitnami/node:15-prod
+FROM public.ecr.aws/amazonlinux/amazonlinux:2
+MAINTAINER Eddie Cho <eddie@eddiecho.io>
 
-RUN apt-get install unzip
-RUN curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip" \
-    && unzip awscli-bundle.zip \
-    && ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+RUN yum update
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
+RUN source /usr/local/nvm/nvm.sh \
+    && nvm install node
+
+RUN node -v
+RUN npm -v
+
 RUN npm install
 
 CMD npm run release
