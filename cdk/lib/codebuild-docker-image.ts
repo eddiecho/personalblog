@@ -3,6 +3,7 @@ import * as Iam from '@aws-cdk/aws-iam';
 import * as Cdk from '@aws-cdk/core';
 
 interface CodeBuildDockerImageProps {
+  baseDir: string;
   imageRepo: string;
   imageTag: string;
   region: string;
@@ -30,17 +31,16 @@ export const renderCodeBuildDockerImage = (scope: Cdk.Construct, props: CodeBuil
       phases: {
         pre_build: {
           commands: [
+            `cd ${props.baseDir}`,
             `aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${ecrRepo}`,
           ],
         },
         build: {
           commands: [`docker build -t ${imageTag} blog/`, `docker tag ${imageTag} ${ecrRepo}/${imageTag}`],
         },
-        /* TODO - uncomment this
         post_build: {
           commands: [`docker push ${ecrRepo}/${imageTag}`],
         },
-        */
       },
     }),
   });

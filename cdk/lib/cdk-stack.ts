@@ -157,6 +157,7 @@ export class CdkStack extends Cdk.Stack {
           actionName: 'BuildAndUploadImage',
           input: this.sourceOutput,
           project: renderCodeBuildDockerImage(this, {
+            baseDir: 'blog',
             accountId: this.account,
             region: this.region,
             imageRepo: this.props.renderBlogImageRepo,
